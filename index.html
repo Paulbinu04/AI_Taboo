@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Taboo Chat</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #222;
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .stars {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .star {
+            position: absolute;
+            width: 18px; height: 18px;
+            background: #fffbe7;
+            border-radius: 50%;
+            opacity: 0.7;
+            animation: floatStar 8s linear infinite;
+        }
+        @keyframes floatStar {
+            0% { transform: translateY(0) scale(1); opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-100vh) scale(1.2); opacity: 0.2; }
+        }
+        .container {
+            max-width: 100vw;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 16px 12px 16px;
+            background: transparent;
+            border-bottom: 2px dashed #fcb900;
+        }
+        .header .score, .header .timer {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fcb900;
+            background: #fffbe7;
+            border-radius: 12px;
+            padding: 4px 14px;
+            margin: 0 4px;
+        }
+        .header .player {
+            font-size: 1.2rem;
+            color: #ff6b6b;
+            font-weight: 700;
+        }
+        .chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 24px 8px 200px 8px;
+            background: transparent;
+            overflow-y: auto;
+            margin-right: 120px;
+            max-height: calc(100vh - 220px);
+            width: calc(100vw - 140px);
+            position: relative;
+        }
+        
+        .chat::after {
+            content: '';
+            height: 120px;
+            min-height: 120px;
+            flex-shrink: 0;
+        }
+        
+        .msg-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .msg-row.user {
+            flex-direction: row-reverse;
+        }
+        
+        .msg-row.ai {
+            flex-direction: row;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .msg-row.user .avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .msg-row.ai .avatar {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .message {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 16px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            animation: bounceIn 0.5s ease-out;
+            scroll-margin-bottom: 20px;
+        }
+        
+        .msg-row.user .message {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 6px;
+        }
+        
+        .msg-row.ai .message {
+            background: white;
+            color: #333;
+            border: 2px solid #e8f4fd;
+            border-bottom-left-radius: 6px;
+        }
+        
+        .bottom-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #fffbe7 0%, #ffeaa7 100%);
+            border-top: 3px solid #fcb900;
+            padding: 20px 16px 16px 16px;
+            z-index: 10;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+            min-height: 180px;
+        }
+        
+        .word-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            border: 2px dashed #fcb900;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .word-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .word-label {
+            font-weight: bold;
+            color: #d63031;
+            font-size: 16px;
+            min-width: 80px;
+        }
+        
+        .word-display {
+            background: linear-gradient(135deg, #ff7675 0%, #d63031 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(214, 48, 49, 0.3);
+        }
+        
+        .restricted-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .restricted-label {
+            font-weight: bold;
+            color: #e17055;
+            font-size: 16px;
+            min-width: 80px;
+        }
+        
+        .restricted-words {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .restricted-word {
+            background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(225, 112, 85, 0.3);
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            max-width: calc(100vw - 140px);
+            margin-right: 120px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.7) translateY(40px); opacity: 0; }
+            60% { transform: scale(1.1) translateY(-8px); opacity: 1; }
+            100% { transform: scale(1) translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .points-badge {
+            position: fixed;
+            right: 40px;
+            bottom: 180px;
+            background: #4ecdc4;
+            color: #fff;
+            font-size: 2.2rem;
+            font-weight: 900;
+            border-radius: 50%;
+            padding: 18px 24px;
+            box-shadow: 0 4px 16px rgba(76,205,196,0.18);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            animation: popPoints 1.2s forwards;
+        }
+        @keyframes popPoints {
+            0% { opacity: 0; transform: scale(0.7) translateY(40px); }
+            30% { opacity: 1; transform: scale(1.2) translateY(-10px); }
+            60% { opacity: 1; transform: scale(1) translateY(0); }
+            100% { opacity: 0; transform: scale(0.7) translateY(-40px); }
+        }
+        .confetti {
+            position: fixed;
+            right: 0; left: 0; top: 0; pointer-events: none;
+            z-index: 2000;
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 16px; height: 16px;
+            border-radius: 4px;
+            opacity: 0.8;
+            animation: confetti-fall 1.2s linear forwards;
+        }
+        @keyframes confetti-fall {
+            0% { transform: translateY(-40px) rotate(0deg); }
+            100% { transform: translateY(120px) rotate(360deg); opacity: 0; }
+        }
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(34,39,47,0.98);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay .modal {
+            background: #fffbe7;
+            padding: 36px 32px 32px 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.25);
+            text-align: center;
+            min-width: 320px;
+        }
+        .overlay .modal h2 {
+            color: #ff6b6b;
+            margin-bottom: 18px;
+        }
+        .overlay .modal input[type=text] {
+            width: 80%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1.08rem;
+            background: #fff;
+            color: #23272f;
+            margin-bottom: 18px;
+        }
+        .overlay .modal button {
+            background: #ff6b6b;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 28px;
+            font-size: 1.08rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .scoreboard {
+            margin-top: 18px;
+            background: #fffbe7;
+            border-radius: 10px;
+            padding: 16px;
+            color: #23272f;
+        }
+        .scoreboard h3 {
+            color: #ff6b6b;
+            margin-bottom: 10px;
+        }
+        .scoreboard ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .scoreboard li {
+            margin-bottom: 6px;
+            font-size: 1.01rem;
+        }
+        @media (max-width: 700px) {
+            .container { max-width: 100vw; }
+            .chat {
+                margin-right: 80px;
+                width: calc(100vw - 100px);
+                padding: 24px 4px 200px 4px;
+            }
+            .input-row { 
+                max-width: calc(100vw - 100px);
+                margin-right: 80px;
+            }
+            .points-badge { right: 10vw; bottom: 160px; font-size: 1.5rem; padding: 10px 14px; }
+        }
+    </style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="container">
+    <div class="header">
+        <span class="player" id="playerNameDisplay"></span>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="bottom-bar">
+        <div class="word-bar">
+            <div class="word-section">
+                <span class="word-label">🎯 Word:</span>
+                <span class="word-display" id="currentWord">Loading...</span>
+            </div>
+            <div class="restricted-section">
+                <span class="restricted-label">🚫 Don't use:</span>
+                <div class="restricted-words" id="restrictedWords">Loading...</div>
+            </div>
+        </div>
+        <div class="input-row">
+            <input type="text" id="messageInput" class="message-input" placeholder="Describe the word without using restricted words..." maxlength="200">
+            <button id="sendBtn" class="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <div class="sidebar" id="sidebar">
+        <div class="score-label">Score</div>
+        <div class="score-value" id="scoreDisplay">0</div>
+        <div class="timer-label">Time</div>
+        <div class="timer-value" id="timerDisplay">120s</div>
+    </div>
+    <div class="overlay" id="leaderboardOverlay">
+        <div class="modal">
+            <h2>Leaderboard</h2>
+            <ul id="leaderboardList"></ul>
+            <button onclick="showNameInput()">Play Game</button>
+        </div>
+    </div>
+    <div class="overlay" id="nameOverlay" style="display:none;">
+        <div class="modal">
+            <h2>Enter your name</h2>
+            <input type="text" id="playerNameInput" maxlength="20" placeholder="Your name..." />
+            <br />
+            <button onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+    <div class="overlay" id="gameOverOverlay" style="display:none;">
+        <div class="modal">
+            <h2>Game Over!</h2>
+            <div class="scoreboard">
+                <h3>Your Score</h3>
+                <div id="finalScore"></div>
+                <h3>Leaderboard</h3>
+                <ul id="leaderboardListEnd"></ul>
+            </div>
+            <button onclick="window.location.reload()">Play Again</button>
+        </div>
+    </div>
+    <div class="points-badge" id="pointsBadge" style="display:none;">+5</div>
+    <canvas class="confetti" id="confettiCanvas" width="600" height="0"></canvas>
+</div>
+<script>
+const API_KEY = 'AIzaSyAwQe9Wkl-qP1ZCqhnHpwVau7ZyCKK2XnA';
+const GAME_TIME = 120; // seconds
+const ATTEMPTS_PER_WORD = 2;
+const SCORE_PER_CORRECT = 5;
+const DIFFICULTY = 'hard';
+
+// Medium-level words only
+const gameWords = [
+    { word: "computer", restrictedWords: ["machine", "digital", "screen", "keyboard", "internet"] },
+    { word: "mountain", restrictedWords: ["peak", "climb", "high", "rock", "nature"] },
+    { word: "restaurant", restrictedWords: ["eat", "food", "dining", "menu", "service"] },
+    { word: "airplane", restrictedWords: ["fly", "sky", "travel", "wings", "pilot"] },
+    { word: "basketball", restrictedWords: ["sport", "ball", "hoop", "game", "court"] },
+    { word: "guitar", restrictedWords: ["music", "instrument", "strings", "play", "sound"] },
+    { word: "beach", restrictedWords: ["sand", "ocean", "swim", "sun", "vacation"] },
+    { word: "chocolate", restrictedWords: ["sweet", "candy", "brown", "dessert", "cocoa"] },
+    { word: "library", restrictedWords: ["books", "read", "study", "quiet", "knowledge"] },
+    { word: "hospital", restrictedWords: ["doctor", "sick", "medicine", "health", "patient"] },
+    { word: "school", restrictedWords: ["learn", "teacher", "student", "class", "education"] },
+    { word: "museum", restrictedWords: ["art", "history", "exhibit", "culture", "display"] },
+    { word: "park", restrictedWords: ["play", "grass", "trees", "outdoor", "recreation"] },
+    { word: "kitchen", restrictedWords: ["cook", "food", "stove", "meal", "prepare"] },
+    { word: "bedroom", restrictedWords: ["sleep", "bed", "rest", "night", "comfort"] },
+    { word: "garden", restrictedWords: ["plants", "flowers", "grow", "nature", "green"] },
+    { word: "office", restrictedWords: ["work", "desk", "business", "job", "professional"] },
+    { word: "theater", restrictedWords: ["movie", "show", "entertainment", "stage", "performance"] },
+    { word: "stadium", restrictedWords: ["sport", "crowd", "game", "athletic", "competition"] },
+    { word: "airport", restrictedWords: ["plane", "travel", "flight", "terminal", "journey"] },
+    { word: "supermarket", restrictedWords: ["shop", "buy", "food", "store", "purchase"] },
+    { word: "bank", restrictedWords: ["money", "save", "account", "financial", "cash"] },
+    { word: "pharmacy", restrictedWords: ["medicine", "drug", "health", "prescription", "medical"] },
+    { word: "bakery", restrictedWords: ["bread", "bake", "sweet", "pastry", "fresh"] },
+    { word: "cafe", restrictedWords: ["coffee", "drink", "social", "meet", "beverage"] },
+    { word: "hotel", restrictedWords: ["stay", "room", "accommodation", "guest", "lodging"] },
+    { word: "gas station", restrictedWords: ["fuel", "car", "gas", "fill", "vehicle"] },
+    { word: "post office", restrictedWords: ["mail", "letter", "send", "package", "delivery"] },
+    { word: "fire station", restrictedWords: ["fire", "emergency", "rescue", "safety", "alarm"] },
+    { word: "police station", restrictedWords: ["police", "law", "crime", "officer", "security"] },
+    { word: "dentist", restrictedWords: ["teeth", "dental", "mouth", "health", "checkup"] },
+    { word: "veterinarian", restrictedWords: ["animal", "pet", "doctor", "health", "care"] },
+    { word: "mechanic", restrictedWords: ["car", "repair", "fix", "vehicle", "service"] },
+    { word: "hairdresser", restrictedWords: ["hair", "cut", "style", "beauty", "salon"] },
+    { word: "photographer", restrictedWords: ["camera", "photo", "picture", "image", "capture"] },
+    { word: "chef", restrictedWords: ["cook", "food", "kitchen", "meal", "prepare"] },
+    { word: "artist", restrictedWords: ["paint", "create", "art", "draw", "design"] },
+    { word: "musician", restrictedWords: ["music", "play", "instrument", "sound", "perform"] },
+    { word: "writer", restrictedWords: ["write", "book", "story", "author", "text"] },
+    { word: "scientist", restrictedWords: ["research", "study", "experiment", "discover", "lab"] },
+    { word: "engineer", restrictedWords: ["build", "design", "technical", "construct", "plan"] },
+    { word: "teacher", restrictedWords: ["teach", "learn", "student", "education", "class"] },
+    { word: "doctor", restrictedWords: ["medical", "health", "patient", "treat", "medicine"] },
+    { word: "lawyer", restrictedWords: ["legal", "law", "court", "case", "justice"] },
+    { word: "architect", restrictedWords: ["design", "build", "structure", "plan", "construction"] },
+    { word: "pilot", restrictedWords: ["fly", "plane", "aircraft", "flight", "sky"] },
+    { word: "sailor", restrictedWords: ["boat", "sea", "sail", "water", "ship"] },
+    { word: "farmer", restrictedWords: ["grow", "crop", "field", "agriculture", "plant"] },
+    { word: "fisherman", restrictedWords: ["fish", "catch", "water", "sea", "hook"] },
+    { word: "hunter", restrictedWords: ["hunt", "animal", "track", "wild", "game"] },
+    { word: "miner", restrictedWords: ["mine", "dig", "underground", "extract", "tunnel"] },
+    { word: "lumberjack", restrictedWords: ["tree", "cut", "wood", "forest", "log"] },
+    { word: "carpenter", restrictedWords: ["wood", "build", "hammer", "construct", "tool"] },
+    { word: "plumber", restrictedWords: ["pipe", "water", "fix", "repair", "install"] },
+    { word: "electrician", restrictedWords: ["wire", "electric", "power", "install", "electrical"] },
+    { word: "painter", restrictedWords: ["paint", "color", "brush", "art", "decorate"] },
+    { word: "gardener", restrictedWords: ["plant", "garden", "grow", "flower", "care"] },
+    { word: "cook", restrictedWords: ["food", "prepare", "kitchen", "meal", "chef"] },
+    { word: "waiter", restrictedWords: ["serve", "food", "restaurant", "table", "order"] },
+    { word: "driver", restrictedWords: ["car", "drive", "vehicle", "road", "transport"] },
+    { word: "mailman", restrictedWords: ["mail", "deliver", "letter", "package", "post"] },
+    { word: "firefighter", restrictedWords: ["fire", "rescue", "emergency", "safety", "alarm"] },
+    { word: "police officer", restrictedWords: ["law", "crime", "protect", "enforce", "security"] },
+    { word: "nurse", restrictedWords: ["care", "medical", "patient", "health", "hospital"] },
+    { word: "dentist", restrictedWords: ["teeth", "dental", "mouth", "health", "checkup"] },
+    { word: "veterinarian", restrictedWords: ["animal", "pet", "doctor", "health", "care"] },
+    { word: "mechanic", restrictedWords: ["car", "repair", "fix", "vehicle", "service"] },
+    { word: "hairdresser", restrictedWords: ["hair", "cut", "style", "beauty", "salon"] },
+    { word: "photographer", restrictedWords: ["camera", "photo", "picture", "image", "capture"] },
+    { word: "chef", restrictedWords: ["cook", "food", "kitchen", "meal", "prepare"] },
+    { word: "artist", restrictedWords: ["paint", "create", "art", "draw", "design"] },
+    { word: "musician", restrictedWords: ["music", "play", "instrument", "sound", "perform"] },
+    { word: "writer", restrictedWords: ["write", "book", "story", "author", "text"] },
+    { word: "scientist", restrictedWords: ["research", "study", "experiment", "discover", "lab"] },
+    { word: "engineer", restrictedWords: ["build", "design", "technical", "construct", "plan"] },
+    { word: "teacher", restrictedWords: ["teach", "learn", "student", "education", "class"] },
+    { word: "doctor", restrictedWords: ["medical", "health", "patient", "treat", "medicine"] },
+    { word: "lawyer", restrictedWords: ["legal", "law", "court", "case", "justice"] },
+    { word: "architect", restrictedWords: ["design", "build", "structure", "plan", "construction"] },
+    { word: "pilot", restrictedWords: ["fly", "plane", "aircraft", "flight", "sky"] },
+    { word: "sailor", restrictedWords: ["boat", "sea", "sail", "water", "ship"] },
+    { word: "farmer", restrictedWords: ["grow", "crop", "field", "agriculture", "plant"] },
+    { word: "fisherman", restrictedWords: ["fish", "catch", "water", "sea", "hook"] },
+    { word: "hunter", restrictedWords: ["hunt", "animal", "track", "wild", "game"] },
+    { word: "miner", restrictedWords: ["mine", "dig", "underground", "extract", "tunnel"] },
+    { word: "lumberjack", restrictedWords: ["tree", "cut", "wood", "forest", "log"] },
+    { word: "carpenter", restrictedWords: ["wood", "build", "hammer", "construct", "tool"] },
+    { word: "plumber", restrictedWords: ["pipe", "water", "fix", "repair", "install"] },
+    { word: "electrician", restrictedWords: ["wire", "electric", "power", "install", "electrical"] },
+    { word: "painter", restrictedWords: ["paint", "color", "brush", "art", "decorate"] },
+    { word: "gardener", restrictedWords: ["plant", "garden", "grow", "flower", "care"] },
+    { word: "cook", restrictedWords: ["food", "prepare", "kitchen", "meal", "chef"] },
+    { word: "waiter", restrictedWords: ["serve", "food", "restaurant", "table", "order"] },
+    { word: "driver", restrictedWords: ["car", "drive", "vehicle", "road", "transport"] },
+    { word: "mailman", restrictedWords: ["mail", "deliver", "letter", "package", "post"] },
+    { word: "firefighter", restrictedWords: ["fire", "rescue", "emergency", "safety", "alarm"] },
+    { word: "police officer", restrictedWords: ["law", "crime", "protect", "enforce", "security"] },
+    { word: "nurse", restrictedWords: ["care", "medical", "patient", "health", "hospital"] }
+];
+
+let playerName = '';
+let score = 0;
+let timer = GAME_TIME;
+let interval = null;
+let currentWord = null;
+let attemptsLeft = ATTEMPTS_PER_WORD;
+let gameHistory = [];
+let chatHistory = [];
+let usedWords = [];
+
+function shuffle(arr) {
+    // Enhanced Fisher-Yates shuffle with multiple passes for better randomization
+    const shuffled = [...arr];
+    
+    // Multiple shuffle passes for better randomization
+    for (let pass = 0; pass < 3; pass++) {
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+    }
+    
+    return shuffled;
+}
+
+function getNextWord() {
+    // If we've used all words, create a completely new random pool
+    if (usedWords.length === 0) {
+        // Create a much larger pool with multiple copies and extra randomization
+        const extendedPool = [];
+        
+        // Add multiple copies of each word with different orders
+        for (let i = 0; i < 5; i++) {
+            const shuffledCopy = shuffle([...gameWords]);
+            extendedPool.push(...shuffledCopy);
+        }
+        
+        // Shuffle the entire extended pool multiple times
+        usedWords = shuffle(shuffle(shuffle(extendedPool)));
+    }
+    
+    // Add extra randomization when selecting
+    if (Math.random() < 0.3 && usedWords.length > 10) {
+        // Occasionally shuffle the remaining words for extra randomness
+        usedWords = shuffle(usedWords);
+    }
+    
+    return usedWords.pop();
+}
+
+function startGame() {
+    playerName = document.getElementById('playerNameInput').value.trim() || 'Player';
+    playerAvatar = AVATARS[Math.floor(Math.random()*AVATARS.length)];
+    document.getElementById('playerNameDisplay').textContent = `${playerAvatar} ${playerName}`;
+    document.getElementById('nameOverlay').style.display = 'none';
+    score = 0;
+    timer = GAME_TIME;
+    gameHistory = [];
+    chatHistory = [];
+    // Initialize with a much larger, highly randomized word pool
+    const extendedPool = [];
+    for (let i = 0; i < 8; i++) {
+        const shuffledCopy = shuffle([...gameWords]);
+        extendedPool.push(...shuffledCopy);
+    }
+    usedWords = shuffle(shuffle(shuffle(extendedPool)));
+    nextWord();
+    updateScore();
+    updateTimer();
+    interval = setInterval(() => {
+        timer--;
+        updateTimer();
+        if (timer <= 0) {
+            endGame();
+        }
+    }, 1000);
+}
+
+function updateScore() {
+    document.getElementById('scoreDisplay').textContent = `Score: ${score}`;
+}
+function updateTimer() {
+    document.getElementById('timerDisplay').textContent = `${timer}s`;
+}
+
+function nextWord() {
+    currentWord = getNextWord();
+    attemptsLeft = ATTEMPTS_PER_WORD;
+    document.getElementById('currentWord').textContent = currentWord.word.toUpperCase();
+    const restrictedDiv = document.getElementById('restrictedWords');
+    restrictedDiv.innerHTML = '';
+    currentWord.restrictedWords.forEach(w => {
+        const span = document.createElement('span');
+        span.className = 'restricted-word';
+        span.textContent = w;
+        restrictedDiv.appendChild(span);
+    });
+    addChatMessage('ai', `Describe the word above without using the restricted words below. You have ${attemptsLeft} attempts for this word.`);
+}
+
+function addChatMessage(sender, text) {
+    chatHistory.push({ sender, text });
+    renderChat();
+    
+    // Center AI messages in the chat view
+    if (sender === 'ai') {
+        setTimeout(() => {
+            const chatDiv = document.getElementById('chat');
+            const lastMessage = chatDiv.lastElementChild;
+            if (lastMessage) {
+                const messageTop = lastMessage.offsetTop;
+                const chatHeight = chatDiv.clientHeight;
+                const scrollTo = messageTop - (chatHeight / 2) + (lastMessage.offsetHeight / 2);
+                
+                chatDiv.scrollTo({
+                    top: Math.max(0, scrollTo),
+                    behavior: 'smooth'
+                });
+            }
+        }, 200);
+    }
+}
+
+function renderChat() {
+    const chatDiv = document.getElementById('chat');
+    chatDiv.innerHTML = '';
+    chatHistory.forEach(msg => {
+        const row = document.createElement('div');
+        row.className = 'msg-row ' + msg.sender;
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = msg.sender === 'user' ? playerAvatar : '🤖';
+        
+        const message = document.createElement('div');
+        message.className = 'message';
+        message.textContent = msg.text;
+        
+        row.appendChild(avatar);
+        row.appendChild(message);
+        chatDiv.appendChild(row);
+    });
+    
+    // Add spacer for blank area at bottom (3-4 lines of space)
+    const spacer = document.createElement('div');
+    spacer.style.height = '120px';
+    spacer.style.minHeight = '120px';
+    spacer.style.flexShrink = '0';
+    chatDiv.appendChild(spacer);
+    
+    // Ensure AI messages are always visible in the middle of the chat
+    setTimeout(() => {
+        const lastMessage = chatDiv.children[chatDiv.children.length - 2]; // Skip the spacer
+        if (lastMessage && chatHistory[chatHistory.length - 1]?.sender === 'ai') {
+            const messageTop = lastMessage.offsetTop;
+            const chatHeight = chatDiv.clientHeight;
+            const scrollTo = messageTop - (chatHeight / 2) + (lastMessage.offsetHeight / 2);
+            
+            chatDiv.scrollTo({
+                top: Math.max(0, scrollTo),
+                behavior: 'smooth'
+            });
+        }
+    }, 150);
+}
+
+async function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    // Prevent using the word or partials
+    const cleanDesc = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanWord = currentWord.word.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (cleanDesc.includes(cleanWord)) {
+        addChatMessage('ai', `You cannot use the word itself in your description! Try again.`);
+        input.value = '';
+        return;
+    }
+    // Prevent partials (3+ letters)
+    for (let len = cleanWord.length; len >= 3; len--) {
+        for (let i = 0; i <= cleanWord.length - len; i++) {
+            const part = cleanWord.substring(i, i+len);
+            if (part.length >= 3 && cleanDesc.includes(part)) {
+                addChatMessage('ai', `You cannot use part of the word ('${part}') in your description! Try again.`);
+                input.value = '';
+                return;
+            }
+        }
+    }
+    addChatMessage('user', text);
+    input.value = '';
+    await processDescription(text);
+}
+
+document.getElementById('messageInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+async function processDescription(description) {
+    // Validate with Gemini
+    addChatMessage('ai', 'Thinking...');
+    try {
+        const validationPrompt = `Check if this description uses any of these restricted words: ${currentWord.restrictedWords.join(', ')}\n\nDescription: "${description}"\n\nIf any restricted words are used, list them and suggest alternatives. If no restricted words are used, respond with "VALID".\n\nRespond in this exact format:\nRESTRICTED_WORDS: [list of used restricted words, or "none"]\nSUGGESTIONS: [list of alternative words, or "none"]`;
+        const validationResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: validationPrompt }] }] })
+        });
+        if (!validationResponse.ok) throw new Error(`Gemini API error: ${validationResponse.status}`);
+        const validationData = await validationResponse.json();
+        const validationResult = validationData.candidates[0].content.parts[0].text;
+        let usedRestrictedWords = [];
+        let suggestions = [];
+        validationResult.split('\n').forEach(line => {
+            if (line.startsWith('RESTRICTED_WORDS:')) {
+                const words = line.replace('RESTRICTED_WORDS:', '').trim();
+                if (words !== 'none') usedRestrictedWords = words.split(',').map(w => w.trim());
+            } else if (line.startsWith('SUGGESTIONS:')) {
+                const words = line.replace('SUGGESTIONS:', '').trim();
+                if (words !== 'none') suggestions = words.split(',').map(w => w.trim());
+            }
+        });
+        if (usedRestrictedWords.length > 0) {
+            chatHistory.pop(); // Remove "Thinking..."
+            addChatMessage('ai', `You used restricted words: ${usedRestrictedWords.join(', ')}. Try again!${suggestions.length ? '\nSuggestions: ' + suggestions.join(', ') : ''}`);
+            attemptsLeft--;
+            if (attemptsLeft <= 0) {
+                addChatMessage('ai', `No attempts left! The correct word was: ${currentWord.word.toUpperCase()}`);
+                gameHistory.push({ word: currentWord.word, correct: false });
+                setTimeout(nextWord, 1200);
+            }
+            return;
+        }
+        // Now ask Gemini to guess
+        const guessPrompt = `You are playing a word guessing game. The user has described a word without using certain restricted terms.\n\nRestricted words that were NOT used: ${currentWord.restrictedWords.join(', ')}\n\nUser's description: "${description}"\n\nBased on this description, guess what word the user is trying to describe.\n\nRules:\n1. Respond with ONLY the guessed word (no explanations, no punctuation)\n2. Make your best guess based on the description\n3. If you're very uncertain, respond with "unknown"\n4. The word should be a common English word that matches the description`;
+        const guessResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: guessPrompt }] }] })
+        });
+        if (!guessResponse.ok) throw new Error(`Gemini API error: ${guessResponse.status}`);
+        const guessData = await guessResponse.json();
+        const aiGuess = (guessData.candidates[0].content.parts[0].text || '').trim().toLowerCase().replace(/\.$/, '');
+        chatHistory.pop(); // Remove "Thinking..."
+        addChatMessage('ai', `My guess: ${aiGuess.toUpperCase()}`);
+        if (aiGuess === currentWord.word.toLowerCase()) {
+            score += SCORE_PER_CORRECT;
+            updateScore();
+            addChatMessage('ai', `Correct! +${SCORE_PER_CORRECT} points.`);
+            showPointsBadge(SCORE_PER_CORRECT);
+            confettiBurst();
+            gameHistory.push({ word: currentWord.word, correct: true });
+            setTimeout(nextWord, 1200);
+        } else {
+            attemptsLeft--;
+            if (attemptsLeft > 0) {
+                addChatMessage('ai', `Try again! Attempts left: ${attemptsLeft}`);
+            } else {
+                addChatMessage('ai', `No attempts left! The correct word was: ${currentWord.word.toUpperCase()}`);
+                gameHistory.push({ word: currentWord.word, correct: false });
+                setTimeout(nextWord, 1200);
+            }
+        }
+    } catch (error) {
+        chatHistory.pop();
+        addChatMessage('ai', `Error: ${error.message}`);
+    }
+}
+
+function endGame() {
+    clearInterval(interval);
+    document.getElementById('gameOverOverlay').style.display = 'flex';
+    document.getElementById('finalScore').textContent = `Player: ${playerName} | Score: ${score}`;
+    const leaderboardListEnd = document.getElementById('leaderboardListEnd');
+    leaderboardListEnd.innerHTML = '';
+    gameHistory.forEach((round, idx) => {
+        const li = document.createElement('li');
+        li.textContent = `${idx + 1}. ${round.word.toUpperCase()} - ${round.correct ? '✅' : '❌'}`;
+        leaderboardListEnd.appendChild(li);
+    });
+}
+
+// Animated stars background
+function createStars() {
+    const starsDiv = document.getElementById('stars');
+    starsDiv.innerHTML = '';
+    for (let i = 0; i < 18; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.left = Math.random() * 100 + 'vw';
+        star.style.top = Math.random() * 100 + 'vh';
+        star.style.animationDelay = (Math.random() * 8) + 's';
+        star.style.opacity = 0.5 + Math.random() * 0.5;
+        starsDiv.appendChild(star);
+    }
+}
+createStars();
+
+// Confetti burst
+function confettiBurst() {
+    const canvas = document.getElementById('confettiCanvas');
+    const ctx = canvas.getContext('2d');
+    const width = window.innerWidth;
+    const height = 180;
+    canvas.width = width;
+    canvas.height = height;
+    const colors = ['#fcb900', '#ff6b6b', '#4ecdc4', '#a8edea', '#fed6e3'];
+    let pieces = [];
+    for (let i = 0; i < 24; i++) {
+        pieces.push({
+            x: width/2 + (Math.random()-0.5)*120,
+            y: 0,
+            dx: (Math.random()-0.5)*6,
+            dy: 2+Math.random()*3,
+            color: colors[Math.floor(Math.random()*colors.length)],
+            size: 8+Math.random()*8,
+            rot: Math.random()*360
+        });
+    }
+    let frame = 0;
+    function draw() {
+        ctx.clearRect(0,0,width,height);
+        pieces.forEach(p => {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot * Math.PI/180);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+            ctx.restore();
+            p.x += p.dx;
+            p.y += p.dy;
+            p.dy += 0.15;
+            p.rot += 8;
+        });
+        frame++;
+        if (frame < 40) requestAnimationFrame(draw);
+        else ctx.clearRect(0,0,width,height);
+    }
+    draw();
+}
+
+// Show points badge
+function showPointsBadge(points) {
+    const badge = document.getElementById('pointsBadge');
+    badge.textContent = `+${points}`;
+    badge.style.display = 'block';
+    badge.style.opacity = 1;
+    badge.style.animation = 'popPoints 1.2s forwards';
+    setTimeout(() => {
+        badge.style.display = 'none';
+    }, 1200);
+}
+
+// Avatars for players
+const AVATARS = ['🦄','🦊','🐸','🐵','🐼','🐯','🐨','🐧','🐙','🦕','🦖','🦩','🦋','🐝','🐳','🦔','🦓','🦄','🦉','🦜','🦦','🦥','🦚','🦢','🦩','🦦','🦔','🦄','🦊','🐸'];
+let playerAvatar = '';
+
+// Leaderboard functions
+function getLeaderboard() {
+    return JSON.parse(localStorage.getItem('taboo_leaderboard') || '[]');
+}
+function saveLeaderboard(lb) {
+    localStorage.setItem('taboo_leaderboard', JSON.stringify(lb));
+}
+function addToLeaderboard(name, score, avatar) {
+    let lb = getLeaderboard();
+    // Remove any previous entry for this name+avatar
+    lb = lb.filter(entry => !(entry.name === name && entry.avatar === avatar));
+    lb.push({ name, score, avatar });
+    lb = lb.sort((a,b) => b.score - a.score).slice(0,10);
+    saveLeaderboard(lb);
+}
+function renderLeaderboard(listId) {
+    const lb = getLeaderboard();
+    const ul = document.getElementById(listId);
+    ul.innerHTML = '';
+    lb.forEach((entry, idx) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span style='font-size:1.5rem;'>${entry.avatar}</span> <b>${entry.name}</b> — <span style='color:#fcb900;font-weight:700;'>${entry.score}</span>`;
+        ul.appendChild(li);
+    });
+    if (lb.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No scores yet. Be the first!';
+        ul.appendChild(li);
+    }
+}
+function showLeaderboard() {
+    renderLeaderboard('leaderboardList');
+    document.getElementById('leaderboardOverlay').style.display = 'flex';
+}
+function showNameInput() {
+    document.getElementById('leaderboardOverlay').style.display = 'none';
+    document.getElementById('nameOverlay').style.display = 'flex';
+}
+
+// Patch addChatMessage to add avatars
+const oldAddChatMessage = addChatMessage;
+addChatMessage = function(sender, text) {
+    chatHistory.push({ sender, text });
+    renderChat();
+};
+
+// Patch renderChat to add avatars
+const oldRenderChat = renderChat;
+renderChat = function() {
+    const chatDiv = document.getElementById('chat');
+    chatDiv.innerHTML = '';
+    chatHistory.forEach(msg => {
+        const row = document.createElement('div');
+        row.className = 'msg-row ' + msg.sender;
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = msg.sender === 'user' ? playerAvatar : '🤖';
+        const bubble = document.createElement('div');
+        bubble.className = 'msg ' + msg.sender;
+        bubble.textContent = msg.text;
+        if (msg.sender === 'user') {
+            row.appendChild(bubble);
+            row.appendChild(avatar);
+        } else {
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+        }
+        chatDiv.appendChild(row);
+    });
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+};
+
+// Patch processDescription to show points badge and confetti on correct answer
+const oldProcessDescription = processDescription;
+processDescription = async function(description) {
+    addChatMessage('ai', 'Thinking...');
+    try {
+        const validationPrompt = `Check if this description uses any of these restricted words: ${currentWord.restrictedWords.join(', ')}\n\nDescription: "${description}"\n\nIf any restricted words are used, list them and suggest alternatives. If no restricted words are used, respond with "VALID".\n\nRespond in this exact format:\nRESTRICTED_WORDS: [list of used restricted words, or "none"]\nSUGGESTIONS: [list of alternative words, or "none"]`;
+        const validationResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: validationPrompt }] }] })
+        });
+        if (!validationResponse.ok) throw new Error(`Gemini API error: ${validationResponse.status}`);
+        const validationData = await validationResponse.json();
+        const validationResult = validationData.candidates[0].content.parts[0].text;
+        let usedRestrictedWords = [];
+        let suggestions = [];
+        validationResult.split('\n').forEach(line => {
+            if (line.startsWith('RESTRICTED_WORDS:')) {
+                const words = line.replace('RESTRICTED_WORDS:', '').trim();
+                if (words !== 'none') usedRestrictedWords = words.split(',').map(w => w.trim());
+            } else if (line.startsWith('SUGGESTIONS:')) {
+                const words = line.replace('SUGGESTIONS:', '').trim();
+                if (words !== 'none') suggestions = words.split(',').map(w => w.trim());
+            }
+        });
+        if (usedRestrictedWords.length > 0) {
+            chatHistory.pop(); // Remove "Thinking..."
+            addChatMessage('ai', `You used restricted words: ${usedRestrictedWords.join(', ')}. Try again!${suggestions.length ? '\nSuggestions: ' + suggestions.join(', ') : ''}`);
+            attemptsLeft--;
+            if (attemptsLeft <= 0) {
+                addChatMessage('ai', `No attempts left! The correct word was: ${currentWord.word.toUpperCase()}`);
+                gameHistory.push({ word: currentWord.word, correct: false });
+                setTimeout(nextWord, 1200);
+            }
+            return;
+        }
+        // Now ask Gemini to guess
+        const guessPrompt = `You are playing a word guessing game. The user has described a word without using certain restricted terms.\n\nRestricted words that were NOT used: ${currentWord.restrictedWords.join(', ')}\n\nUser's description: "${description}"\n\nBased on this description, guess what word the user is trying to describe.\n\nRules:\n1. Respond with ONLY the guessed word (no explanations, no punctuation)\n2. Make your best guess based on the description\n3. If you're very uncertain, respond with "unknown"\n4. The word should be a common English word that matches the description`;
+        const guessResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: guessPrompt }] }] })
+        });
+        if (!guessResponse.ok) throw new Error(`Gemini API error: ${guessResponse.status}`);
+        const guessData = await guessResponse.json();
+        const aiGuess = (guessData.candidates[0].content.parts[0].text || '').trim().toLowerCase().replace(/\.$/, '');
+        chatHistory.pop(); // Remove "Thinking..."
+        addChatMessage('ai', `My guess: ${aiGuess.toUpperCase()}`);
+        if (aiGuess === currentWord.word.toLowerCase()) {
+            score += SCORE_PER_CORRECT;
+            updateScore();
+            addChatMessage('ai', `Correct! +${SCORE_PER_CORRECT} points.`);
+            showPointsBadge(SCORE_PER_CORRECT);
+            confettiBurst();
+            gameHistory.push({ word: currentWord.word, correct: true });
+            setTimeout(nextWord, 1200);
+        } else {
+            attemptsLeft--;
+            if (attemptsLeft > 0) {
+                addChatMessage('ai', `Try again! Attempts left: ${attemptsLeft}`);
+            } else {
+                addChatMessage('ai', `No attempts left! The correct word was: ${currentWord.word.toUpperCase()}`);
+                gameHistory.push({ word: currentWord.word, correct: false });
+                setTimeout(nextWord, 1200);
+            }
+        }
+    } catch (error) {
+        chatHistory.pop();
+        addChatMessage('ai', `Error: ${error.message}`);
+    }
+};
+
+// On load, always show leaderboard overlay and update it
+window.onload = function() {
+    renderLeaderboard('leaderboardList');
+    document.getElementById('leaderboardOverlay').style.display = 'flex';
+};
+
+// Patch endGame to always save and show leaderboard
+endGame = function() {
+    clearInterval(interval);
+    addToLeaderboard(playerName, score, playerAvatar);
+    document.getElementById('gameOverOverlay').style.display = 'flex';
+    document.getElementById('finalScore').textContent = `${playerAvatar} ${playerName} | Score: ${score}`;
+    renderLeaderboard('leaderboardListEnd');
+    renderLeaderboard('leaderboardList'); // update start overlay too
+};
+
+// Patch addToLeaderboard to always keep only top 10 unique player+avatar entries (by highest score)
+function addToLeaderboard(name, score, avatar) {
+    let lb = getLeaderboard();
+    // Remove any previous entry for this name+avatar
+    lb = lb.filter(entry => !(entry.name === name && entry.avatar === avatar));
+    lb.push({ name, score, avatar });
+    lb = lb.sort((a,b) => b.score - a.score).slice(0,10);
+    saveLeaderboard(lb);
+}
+
+// Patch showLeaderboard to always update
+function showLeaderboard() {
+    renderLeaderboard('leaderboardList');
+    document.getElementById('leaderboardOverlay').style.display = 'flex';
+}
+
+// Patch showNameInput to hide leaderboard overlay
+function showNameInput() {
+    document.getElementById('leaderboardOverlay').style.display = 'none';
+    document.getElementById('nameOverlay').style.display = 'flex';
+}
+</script>
+<style>
+.sidebar {
+    position: fixed;
+    top: 50px;
+    right: 0;
+    width: 110px;
+    background: #fffbe7;
+    border-radius: 18px 0 0 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    padding: 18px 10px 18px 10px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #ff6b6b;
+}
+.score-label, .timer-label {
+    font-size: 1.1rem;
+    color: #fcb900;
+    margin-bottom: 2px;
+}
+.score-value, .timer-value {
+    font-size: 2.1rem;
+    color: #4ecdc4;
+    margin-bottom: 8px;
+}
+@media (max-width: 700px) {
+    .sidebar {
+        width: 80px;
+        font-size: 1rem;
+        padding: 10px 4px 10px 4px;
+        top: 0;
+    }
+    .score-value, .timer-value { font-size: 1.3rem; }
+}
+</style>
+</body>
+</html> 

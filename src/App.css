@@ -1,0 +1,66 @@
+.App {
+  min-height: 100vh;
+  padding: 20px 0;
+}
+
+.App header {
+  margin-bottom: 40px;
+}
+
+.App h1 {
+  margin-bottom: 10px;
+}
+
+.App p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Animation for cards */
+.card {
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading animation */
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .App header h1 {
+    font-size: 2rem !important;
+  }
+  
+  .App header p {
+    font-size: 1rem !important;
+  }
+  
+  .score-display .flex {
+    flex-direction: column;
+    gap: 10px;
+  }
+} 
