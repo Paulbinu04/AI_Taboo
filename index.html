@@ -1085,13 +1085,13 @@ endGame = function() {
     renderLeaderboard('leaderboardList'); // update start overlay too
 };
 
-// Patch addToLeaderboard to always keep only top 10 unique player+avatar entries (by highest score)
+// Patch addToLeaderboard to always keep only top 5 unique player+avatar entries (by highest score)
 function addToLeaderboard(name, score, avatar) {
     let lb = getLeaderboard();
     // Remove any previous entry for this name+avatar
     lb = lb.filter(entry => !(entry.name === name && entry.avatar === avatar));
     lb.push({ name, score, avatar });
-    lb = lb.sort((a,b) => b.score - a.score).slice(0,10);
+    lb = lb.sort((a,b) => b.score - a.score).slice(0,5);
     saveLeaderboard(lb);
 }
 
